@@ -17,6 +17,7 @@ class ApiClient():
             )
         return ApiClient.client
 
+    @staticmethod
     def get(class_name=None):
         """Return the authenticated SoftLayer client.
 
@@ -54,5 +55,3 @@ class ApplicationConfig():
             The string value in the application config
         """
         return ApplicationConfig.get_config().get(section, key)
-
-print(ApplicationConfig.get('environment', 'poll_rate'))
