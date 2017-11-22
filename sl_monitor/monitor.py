@@ -7,19 +7,14 @@ from logzero import logger
 from sqlitedict import SqliteDict
 
 from common import ApplicationConfig
-from common import ApiClient
+from hardware import get_all_servers
+from hardware import get_device_login_credentials
 
 def program_loop():
     """
     Primary program loop
     """
     with get_datadict('hw_monitor') as hw_dict:
-        """
-        mydict['some_key'] = "first value"
-        mydict['another_key'] = list(range(10))
-        mydict.commit()
-        """
-
         while(True):
             logger.debug('Checking for work')
             check_for_hardware_changes(hw_dict)
@@ -110,47 +105,14 @@ def process_hardware(hw_dict):
                     server['hostname'],
                     globalIdentifier)
 
-        #todo
+        login_info = get_device_login_credentials(server['id'])
+        logger.info("SSHing into %s with user '%s'", 
+                    login_info['ip_address'], 
+                    login_info['username'])
 
         # once complete remove from unprocessed
         del hw_dict['unprocessed_hardware'][globalIdentifier]
         hw_dict.commit()
-
-
-def get_all_servers():
-    """
-    Calls SLAPI to get hardware
-    """
-    mask = '''
-id,
-globalIdentifier,
-hostname,
-lastTransaction,
-hardwareStatus[
-    status
-],
-lastTransaction[
-    id,
-    createDate,
-    statusChangeDate,
-    elapsedSeconds,
-    transactionStatus.name,
-    transactionGroup.name
-]
-'''
-    _filter = {
-        'hardwareChassis': {'hardwareFunction': {'code': {'operation': 'WEBSVR'}}},
-        'hardwareStatus': {'status': {'operation': 'ACTIVE'}},
-    }
-    
-    devices = ApiClient().get('Account').getHardware(iter=True,
-                                                     chunk=500,
-                                                     mask=mask,
-                                                     filter=_filter)
-
-    for device in devices:
-        if 'globalIdentifier' in device:
-            yield device
 
 
 if __name__ == "__main__":
