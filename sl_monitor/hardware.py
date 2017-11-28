@@ -83,10 +83,37 @@ operatingSystem[
 
 def run_script(url, login_dict):
     ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(login_dict['ip_address'], 
                 username=login_dict['username'], 
                 password=login_dict['password'])
 
-    #todo build exec command
+    logger.info("Building script command for %s", url)
 
-    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('wget %s' % url)
+    commands = [
+        # Generate a random filename.
+        'export PI=$(mktemp post_install.XXXX)',
+
+        # Download the script using headers from the order.
+        "wget --no-check-certificate -O $PI \"%s\" 2>&1" % url,
+
+        # Make the downloaded script executable.
+        'chmod +x $PI',
+
+        # Execute the remote script.
+        './$PI 2>&1',
+    ]
+
+    # Wrap all commands in a single nohup and log all output to syslog with the tag post_install
+    fullCommand = "nohup sh -c " + escapeshellarg("&&".join(commands)) + " 2>&1 | logger -i -t post_install -p info &"
+
+    logger.info("Running Remote Command on %s", login_dict['ip_address'])
+    logger.debug(fullCommand)
+    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(fullCommand)
+    logger.info("Remote Command sent")
+
+    return (ssh_stdin, ssh_stdout, ssh_stderr)
+
+
+def escapeshellarg(arg):
+    return "\\'".join("'" + p + "'" for p in arg.split("'"))

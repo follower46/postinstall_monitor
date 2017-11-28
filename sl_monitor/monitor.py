@@ -2,6 +2,7 @@
 from time import sleep
 
 import json
+import logging
 import logzero
 from logzero import logger
 from sqlitedict import SqliteDict
@@ -9,6 +10,7 @@ from sqlitedict import SqliteDict
 from common import ApplicationConfig
 from hardware import get_all_servers
 from hardware import get_device_login_credentials
+from hardware import run_script
 
 def program_loop():
     """
@@ -34,7 +36,10 @@ def configure_logger():
                  '%(end_color)s %(message)s'
     formatter = logzero.LogFormatter(fmt=log_format)
     logzero.setup_default_logger(formatter=formatter)
-    logzero.logfile("monitor.log") # this needs to be updated to roll the log
+    logzero.logfile("monitor.log", 
+                    maxBytes=5e6, 
+                    backupCount=5,
+                    loglevel=logging.INFO,)
 
 
 def get_datadict(name):
@@ -67,32 +72,48 @@ def check_for_hardware_changes(hw_dict):
     else:
         logger.info('Checking for new hardware')
         global_identifiers = [server['globalIdentifier'] for server in hw_dict['all_hardware']]
+        all_hardware = hw_dict['all_hardware']
+        unprocessed_hardware = hw_dict['unprocessed_hardware']
         for server in hardware_objects:
             if server['globalIdentifier'] not in global_identifiers:
                 # server new to account
                 logger.info("Adding in server %s (%s) to watch.", (server['hostname'], server['globalIdentifier']))
-                hw_dict['all_hardware'].append(server)
-                hw_dict['unprocessed_hardware'][server['globalIdentifier']] = server
-                hw_dict.commit()
+                all_hardware.append(server)
+                unprocessed_hardware[server['globalIdentifier']] = server
             else:
                 # check if hardware is in same state as previously checked
-                cached_server = hw_dict['all_hardware'][global_identifiers.index(server['globalIdentifier'])]
+                hardware_index = global_identifiers.index(server['globalIdentifier'])
+
+                cached_server = hw_dict['all_hardware'][hardware_index]
                 if server['lastTransaction']['id'] != cached_server['lastTransaction']['id']:
-                    logger.info("Server %s (%s) has a new transaction (changed from %s(%s) to %s(%s)", 
+                    logger.info("Server %s (%s) - has a new transaction (changed from '%s' (%s) to '%s' (%s))", 
                                 server['hostname'],
                                 server['globalIdentifier'],
-                                server['lastTransaction']['transactionGroup'],
-                                server['lastTransaction']['id'],
-                                server['lastTransaction']['transactionGroup'],
+                                cached_server['lastTransaction']['transactionGroup']['name'],
+                                cached_server['lastTransaction']['id'],
+                                server['lastTransaction']['transactionGroup']['name'],
                                 server['lastTransaction']['id'],)
-                    hw_dict['all_hardware'][global_identifiers.index(server['globalIdentifier'])] = server
-                    hw_dict['unprocessed_hardware'][server['globalIdentifier']] = server
-                    hw_dict.commit()
-                elif server['lastTransaction']['statusChangeDate'] != cached_server['lastTransaction']['statusChangeDate']:
-                    pass
+
+                    all_hardware[hardware_index] = server
+                    unprocessed_hardware[server['globalIdentifier']] = server
+                elif server['lastTransaction']['transactionStatus']['name'] != cached_server['lastTransaction']['transactionStatus']['name']:
+                    # transaction has updated
+                    logger.info("Server %s (%s) - has an updated transaction (changed from '%s' to '%s')", 
+                                server['hostname'],
+                                server['globalIdentifier'],
+                                cached_server['lastTransaction']['transactionStatus']['name'],
+                                server['lastTransaction']['transactionStatus']['name'],)
+
+                    all_hardware[hardware_index] = server
+                    unprocessed_hardware[server['globalIdentifier']] = server
+        
+        hw_dict['all_hardware'] = all_hardware
+        hw_dict['unprocessed_hardware'] = unprocessed_hardware
+        hw_dict.commit()
 
 
 def process_hardware(hw_dict):
+    unprocessed_hardware = hw_dict['unprocessed_hardware']
     for globalIdentifier, server in hw_dict['unprocessed_hardware'].items():
         # do not act on hardware with active transactions
         if server['lastTransaction']['transactionStatus']['name'] != 'COMPLETE':
@@ -110,9 +131,16 @@ def process_hardware(hw_dict):
                     login_info['ip_address'], 
                     login_info['username'])
 
+        run_script(ApplicationConfig.get("environment", "post_install_script"), login_info)
+
         # once complete remove from unprocessed
-        del hw_dict['unprocessed_hardware'][globalIdentifier]
-        hw_dict.commit()
+        logger.info("Removing %s (%s) from unprocessed hardware",
+                    server['hostname'],
+                    globalIdentifier)
+        del unprocessed_hardware[globalIdentifier]
+    
+    hw_dict['unprocessed_hardware'] = unprocessed_hardware
+    hw_dict.commit()
 
 
 if __name__ == "__main__":
