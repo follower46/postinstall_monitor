@@ -69,7 +69,7 @@ operatingSystem[
     device = ApiClient().get('Hardware').getObject(mask=mask, id=device_id)
     root_users = [user for user in device['operatingSystem']['passwords'] if user['username'] == 'root']
 
-    if not len(root_users):
+    if not root_users:
         return {}
 
     ip_address = device['primaryIpAddress']
