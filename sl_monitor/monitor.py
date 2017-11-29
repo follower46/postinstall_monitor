@@ -7,10 +7,19 @@ import logzero
 from logzero import logger
 from sqlitedict import SqliteDict
 
-from common import ApplicationConfig
-from hardware import get_all_servers
-from hardware import get_device_login_credentials
-from hardware import run_script
+from sl_monitor.common import ApplicationConfig
+from sl_monitor.hardware import get_all_servers
+from sl_monitor.hardware import execute_post_install_script
+
+
+def run(config_path):
+    logger.info('Loading config %s' % config_path)
+    ApplicationConfig.load_config(config_path)
+    configure_logger()
+    logger.info('Starting main program loop')
+    program_loop()
+    logger.info('Program loop ended')
+
 
 def program_loop():
     """
@@ -20,6 +29,7 @@ def program_loop():
         while(True):
             logger.debug('Checking for work')
             check_for_hardware_changes(hw_dict)
+            logger.debug('Processing hardware')
             process_hardware(hw_dict)
 
             # wait
@@ -36,7 +46,7 @@ def configure_logger():
                  '%(end_color)s %(message)s'
     formatter = logzero.LogFormatter(fmt=log_format)
     logzero.setup_default_logger(formatter=formatter)
-    logzero.logfile("monitor.log", 
+    logzero.logfile(ApplicationConfig.get("environment", "log_location"), 
                     maxBytes=5e6, 
                     backupCount=5,
                     loglevel=logging.INFO,)
@@ -70,7 +80,7 @@ def check_for_hardware_changes(hw_dict):
                 hw_dict['unprocessed_hardware'][server['globalIdentifier']] = server
         hw_dict.commit()
     else:
-        logger.info('Checking for new hardware')
+        logger.debug('Checking for new hardware')
         global_identifiers = [server['globalIdentifier'] for server in hw_dict['all_hardware']]
         all_hardware = hw_dict['all_hardware']
         unprocessed_hardware = hw_dict['unprocessed_hardware']
@@ -126,12 +136,12 @@ def process_hardware(hw_dict):
                     server['hostname'],
                     globalIdentifier)
 
-        login_info = get_device_login_credentials(server['id'])
-        logger.info("SSHing into %s with user '%s'", 
-                    login_info['ip_address'], 
-                    login_info['username'])
+        try: 
+            execute_post_install_script(server['id'])
+        except Exception as err:
+            logger.error(err, exc_info=True)
+            logger.error("Script error occurred, skipping device.")
 
-        run_script(ApplicationConfig.get("environment", "post_install_script"), login_info)
 
         # once complete remove from unprocessed
         logger.info("Removing %s (%s) from unprocessed hardware",
@@ -141,10 +151,3 @@ def process_hardware(hw_dict):
     
     hw_dict['unprocessed_hardware'] = unprocessed_hardware
     hw_dict.commit()
-
-
-if __name__ == "__main__":
-    configure_logger()
-    logger.info('Starting main program loop')
-    program_loop()
-    logger.info('Program loop ended')

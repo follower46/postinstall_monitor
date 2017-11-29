@@ -7,8 +7,8 @@ from logzero import logger
 import paramiko
 from sqlitedict import SqliteDict
 
-from common import ApplicationConfig
-from common import ApiClient
+from sl_monitor.common import ApplicationConfig
+from sl_monitor.common import ApiClient
 
 
 def get_all_servers():
@@ -45,6 +45,23 @@ lastTransaction[
     for device in devices:
         if 'globalIdentifier' in device:
             yield device
+
+
+def execute_post_install_script(device_id):
+    """
+    Downloads and executes post install script on a device
+    """
+    login_info = get_device_login_credentials(device_id)
+    logger.info("SSHing into %s with user '%s'", 
+                login_info['ip_address'], 
+                login_info['username'])
+
+    ssh_stdin, ssh_stdout, ssh_stderr = run_script(
+        ApplicationConfig.get("post_install_scripts", "default_url"), 
+        login_info
+    )
+
+    return (ssh_stdin, ssh_stdout, ssh_stderr)
 
 
 def get_device_login_credentials(device_id):
@@ -95,7 +112,12 @@ def run_script(url, login_dict):
         'export PI=$(mktemp post_install.XXXX)',
 
         # Download the script using headers from the order.
-        "wget --no-check-certificate -O $PI \"%s\" 2>&1" % url,
+        "wget --retry-connrefused --tries=%s --waitretry=%s --read-timeout=%s --timeout=%s --no-check-certificate -O $PI \"%s\" 2>&1" % (
+            ApplicationConfig.get("post_install_scripts", "retries"),
+            ApplicationConfig.get("post_install_scripts", "wait_period"),
+            ApplicationConfig.get("post_install_scripts", "timeout"),
+            ApplicationConfig.get("post_install_scripts", "timeout"),
+            url),
 
         # Make the downloaded script executable.
         'chmod +x $PI',
@@ -104,8 +126,11 @@ def run_script(url, login_dict):
         './$PI 2>&1',
     ]
 
-    # Wrap all commands in a single nohup and log all output to syslog with the tag post_install
-    fullCommand = "nohup sh -c " + escapeshellarg("&&".join(commands)) + " 2>&1 | logger -i -t post_install -p info &"
+    if ApplicationConfig.getboolean("post_install_scripts", "nohup"):
+        # Wrap all commands in a single nohup and log all output to syslog with the tag post_install
+        fullCommand = "nohup sh -c " + escapeshellarg("&&".join(commands)) + " 2>&1 | logger -i -t post_install -p info &"
+    else:
+        fullCommand = escapeshellarg("&&".join(commands)) + " | logger -i -t post_install -p info"
 
     logger.info("Running Remote Command on %s", login_dict['ip_address'])
     logger.debug(fullCommand)

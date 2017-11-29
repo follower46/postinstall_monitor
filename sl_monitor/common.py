@@ -39,14 +39,18 @@ class ApplicationConfig():
     config = None
 
     @staticmethod
-    def get_config():
-        if not os.path.isfile('monitor.local.cfg'):
-            raise FileNotFoundError('monitor.local.cfg')
+    def load_config(config_path):
+        if not os.path.isfile(config_path):
+            raise FileNotFoundError(config_path)
 
+        config = configparser.ConfigParser()
+        config.read(config_path)
+        ApplicationConfig.config = config
+
+    @staticmethod
+    def get_config():
         if ApplicationConfig.config is None:
-            config = configparser.ConfigParser()
-            config.read('monitor.local.cfg')
-            ApplicationConfig.config = config
+            raise RuntimeError("Attempting to access before loaded.")
         return ApplicationConfig.config
 
     @staticmethod
