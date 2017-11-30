@@ -5,11 +5,15 @@ import json
 import logging
 import logzero
 from logzero import logger
+import re
 from sqlitedict import SqliteDict
 
 from sl_monitor.common import ApplicationConfig
 from sl_monitor.hardware import get_all_servers
 from sl_monitor.hardware import execute_post_install_script
+
+
+transaction_group_re = re.compile(r'(.*reload.*)|(.*provision.*)', re.IGNORECASE)
 
 
 def run(config_path):
@@ -105,7 +109,8 @@ def check_for_hardware_changes(hw_dict):
                                 server['lastTransaction']['id'],)
 
                     all_hardware[hardware_index] = server
-                    unprocessed_hardware[server['globalIdentifier']] = server
+                    if is_os_install_transaction(server['lastTransaction']):
+                        unprocessed_hardware[server['globalIdentifier']] = server
                 elif server['lastTransaction']['transactionStatus']['name'] != cached_server['lastTransaction']['transactionStatus']['name']:
                     # transaction has updated
                     logger.info("Server %s (%s) - has an updated transaction (changed from '%s' to '%s')", 
@@ -115,11 +120,19 @@ def check_for_hardware_changes(hw_dict):
                                 server['lastTransaction']['transactionStatus']['name'],)
 
                     all_hardware[hardware_index] = server
-                    unprocessed_hardware[server['globalIdentifier']] = server
+                    if is_os_install_transaction(server['lastTransaction']):
+                        unprocessed_hardware[server['globalIdentifier']] = server
         
         hw_dict['all_hardware'] = all_hardware
         hw_dict['unprocessed_hardware'] = unprocessed_hardware
         hw_dict.commit()
+
+
+def is_os_install_transaction(transaction):
+    """
+    Checks if the current transaction is one which needs to be acted upon
+    """
+    return bool(transaction_group_re.match(transaction['transactionGroup']['name']))
 
 
 def process_hardware(hw_dict):

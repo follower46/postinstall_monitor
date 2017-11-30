@@ -19,7 +19,6 @@ def get_all_servers():
 id,
 globalIdentifier,
 hostname,
-lastTransaction,
 hardwareStatus[
     status
 ],
