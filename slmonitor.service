@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/usr/local/lib/postinstall_monitor/sl_monitor
-ExecStart=python3 /usr/local/lib/postinstall_monitor/sl_monitor/monitor.py --configpath=/usr/local/lib/postinstall_monitor/monitor.cfg
+ExecStart=python3 /usr/local/lib/postinstall_monitor/sl_monitor/monitor.py /usr/local/lib/postinstall_monitor/monitor.cfg
 Restart=always
 RestartSec=3
 
