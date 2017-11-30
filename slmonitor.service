@@ -1,0 +1,12 @@
+[Unit]
+Description=Post Provision script monitor and executor
+After=network.target
+
+[Service]
+WorkingDirectory=/usr/local/lib/postinstall_monitor/sl_monitor
+ExecStart=python3 /usr/local/lib/postinstall_monitor/sl_monitor/monitor.py --configpath=/usr/local/lib/postinstall_monitor/monitor.cfg
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
