@@ -19,9 +19,6 @@ def get_all_servers():
 id,
 globalIdentifier,
 hostname,
-hardwareStatus[
-    status
-],
 lastTransaction[
     id,
     createDate,
@@ -31,15 +28,10 @@ lastTransaction[
     transactionGroup.name
 ]
 '''
-    _filter = {
-        'hardwareChassis': {'hardwareFunction': {'code': {'operation': 'WEBSVR'}}},
-        'hardwareStatus': {'status': {'operation': 'ACTIVE'}},
-    }
     
-    devices = ApiClient().get('Account').getHardware(iter=True,
-                                                     chunk=500,
-                                                     mask=mask,
-                                                     filter=_filter)
+    devices = ApiClient().get('Account').getVirtualGuests(iter=True,
+                                                          chunk=500,
+                                                          mask=mask)
 
     for device in devices:
         if 'globalIdentifier' in device:
