@@ -1,19 +1,10 @@
-"""Deployment Monitor Module."""
-from time import sleep
-
-import json
-import logzero
-from logzero import logger
-import paramiko
-from sqlitedict import SqliteDict
-
-from sl_monitor.common import ApplicationConfig
+"""Virtual Guest Module."""
 from sl_monitor.common import ApiClient
 
 
 def get_all_servers():
     """
-    Calls SLAPI to get hardware
+    Calls SLAPI to get virtual guests
     """
     mask = '''
 id,

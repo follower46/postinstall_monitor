@@ -1,13 +1,4 @@
-"""Deployment Monitor Module."""
-from time import sleep
-
-import json
-import logzero
-from logzero import logger
-import paramiko
-from sqlitedict import SqliteDict
-
-from sl_monitor.common import ApplicationConfig
+"""Hardware Module."""
 from sl_monitor.common import ApiClient
 
 
