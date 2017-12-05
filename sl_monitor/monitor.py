@@ -33,7 +33,7 @@ def program_loop():
     with get_datadict('device_monitor') as device_dict:
         while(True):
             logger.debug('Checking for work')
-            check_for_device_changes(device_dict)
+            check_for_all_device_changes(device_dict)
             logger.debug('Processing devices')
             process_all_devices(device_dict)
 
@@ -67,38 +67,39 @@ def get_datadict(name):
                       decode=json.loads)
 
 
-def check_for_device_changes(device_dict):
+def check_for_all_device_changes(device_dict):
     """
-    Checks available hardware for changes
+    
     """
-
-    if 'all_hardware' not in device_dict:
-        logger.info('First Run, adding hardware/virtual')
-        # populate cached hardware
-        logger.debug('Adding hardware')
-        device_dict['all_hardware'] = list(hardware.get_all_servers())
-        logger.debug('Adding virtual')
-        device_dict['all_virtual'] = list(virtual.get_all_servers())
-
-        # do not run against completed devices on first start
-        logger.debug('Checking for unprocessed hardware')
-        prepopulate_unprocessed_devices(device_dict, 'all_hardware', 'unprocessed_hardware')
-        logger.debug('Checking for unprocessed virtual')
-        prepopulate_unprocessed_devices(device_dict, 'all_virtual', 'unprocessed_virtual')
-        device_dict.commit()
+    if ApplicationConfig.getboolean("environment", "monitor_hardware"):
+        check_for_device_changes(device_dict, 'all_hardware', 'unprocessed_hardware', hardware)
     else:
-        logger.debug('Checking for changed hardware')
-        add_devices_for_changes(hardware.get_all_servers(), 
+        logger.debug('Ignoring hardware changes (per config)')
+
+    if ApplicationConfig.getboolean("environment", "monitor_virtual"):
+        check_for_device_changes(device_dict, 'all_virtual', 'unprocessed_virtual', virtual)
+    else:
+        logger.debug('Ignoring virtual changes (per config)')
+
+def check_for_device_changes(device_dict, device_key, unprocessed_key, api_object):
+    """
+    Checks available devices for changes
+    """
+    device_type = api_object.__class__.__name__
+    if device_key not in device_dict:
+        logger.info('First Run, adding %s', device_type)
+        # populate cached devices
+        device_dict[device_key] = list(api_object.get_all_servers())
+
+        logger.debug('Checking for unprocessed %s', device_type)
+        prepopulate_unprocessed_devices(device_dict, device_key, unprocessed_key)
+    else:
+        logger.debug('Checking for changed %s', device_type)
+        add_devices_for_changes(api_object.get_all_servers(), 
                                 device_dict, 
-                                'all_hardware', 
-                                'unprocessed_hardware')
-        
-        logger.debug('Checking for changed virtual')
-        add_devices_for_changes(virtual.get_all_servers(), 
-                                device_dict, 
-                                'all_virtual', 
-                                'unprocessed_virtual')
-        device_dict.commit()
+                                device_key, 
+                                unprocessed_key)
+    device_dict.commit()
 
 
 def prepopulate_unprocessed_devices(device_dict, device_key, unprocessed_key):
@@ -165,8 +166,11 @@ def is_os_install_transaction(transaction):
 
 
 def process_all_devices(device_dict):
-    process_devices(device_dict, 'unprocessed_hardware', 'Hardware')
-    process_devices(device_dict, 'unprocessed_virtual', 'Virtual_Guest')
+    if ApplicationConfig.getboolean("environment", "monitor_hardware"):
+        process_devices(device_dict, 'unprocessed_hardware', 'Hardware')
+    
+    if ApplicationConfig.getboolean("environment", "monitor_virtual"):
+        process_devices(device_dict, 'unprocessed_virtual', 'Virtual_Guest')
 
 
 def process_devices(device_dict, unprocessed_key, device_type):
