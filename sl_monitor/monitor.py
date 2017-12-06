@@ -31,7 +31,7 @@ def program_loop():
     Primary program loop
     """
     with get_datadict('device_monitor') as device_dict:
-        while(True):
+        while True:
             logger.debug('Checking for work')
             check_for_all_device_changes(device_dict)
             logger.debug('Processing devices')
@@ -85,7 +85,7 @@ def check_for_device_changes(device_dict, device_key, unprocessed_key, api_objec
     """
     Checks available devices for changes
     """
-    device_type = api_object.__class__.__name__
+    device_type = api_object.api_type
     if device_key not in device_dict:
         logger.info('First Run, adding %s', device_type)
         # populate cached devices

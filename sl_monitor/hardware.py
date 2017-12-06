@@ -1,6 +1,7 @@
 """Hardware Module."""
 from sl_monitor.common import ApiClient
 
+api_type = "hardware"
 
 def get_all_servers():
     """

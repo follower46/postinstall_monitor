@@ -1,6 +1,7 @@
 """Virtual Guest Module."""
 from sl_monitor.common import ApiClient
 
+api_type = "virtual"
 
 def get_all_servers():
     """

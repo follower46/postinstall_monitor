@@ -48,9 +48,9 @@ operatingSystem[
     if not root_users:
         return {}
 
-    ip_address = device['primaryIpAddress']
-    if ApplicationConfig.getboolean("environment", "use_private_network"):
-        ip_address = device['primaryBackendIpAddress']
+    ip_address = device['primaryBackendIpAddress']
+    if not ApplicationConfig.getboolean("environment", "use_private_network"):
+        ip_address = device['primaryIpAddress']
     return {
         'username': root_users[0]['username'],
         'password': root_users[0]['password'],
