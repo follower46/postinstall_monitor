@@ -89,7 +89,7 @@ operatingSystem[
         return {}
 
     ip_address = device['primaryBackendIpAddress']
-    if ApplicationConfig.getboolean("environment", "use_private_network"):
+    if not ApplicationConfig.getboolean("environment", "use_private_network"):
         ip_address = device['primaryIpAddress']
     return {
         'username': root_users[0]['username'],
