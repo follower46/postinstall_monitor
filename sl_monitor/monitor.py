@@ -166,7 +166,7 @@ def is_os_install_transaction(transaction):
 
 
 def process_all_devices(device_dict):
-    logger.info("%s unprocessed hardware, %s unprocessed virtual",
+    logger.debug("%s unprocessed hardware, %s unprocessed virtual",
                 len(device_dict['unprocessed_hardware']),
                 len(device_dict['unprocessed_virtual']))
 
@@ -178,7 +178,7 @@ def process_all_devices(device_dict):
 
 
 def process_devices(device_dict, unprocessed_key, device_type):
-    logger.info("Processing %s", device_type)
+    logger.debug("Processing %s", device_type)
     unprocessed_devices = device_dict[unprocessed_key]
     for globalIdentifier, server in device_dict[unprocessed_key].items():
         # do not act on hardware with active transactions
