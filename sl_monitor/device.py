@@ -46,7 +46,7 @@ operatingSystem[
     root_users = [user for user in device['operatingSystem']['passwords'] if user['username'] == 'root']
 
     if not root_users:
-        return {}
+        raise KeyError("root user not found")
 
     ip_address = device['primaryBackendIpAddress']
     if not ApplicationConfig.getboolean("environment", "use_private_network"):
