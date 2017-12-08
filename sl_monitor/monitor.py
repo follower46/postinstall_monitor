@@ -122,7 +122,7 @@ def add_devices_for_changes(device_list, device_dict, device_key, unprocessed_ke
     for server in device_list:
         if server['globalIdentifier'] not in global_identifiers:
             # server new to account
-            logger.info("Adding in server %s (%s) to watch.", (server['hostname'], server['globalIdentifier']))
+            logger.info("Adding in server %s (%s) to watch.", server['hostname'], server['globalIdentifier'])
             all_devices.append(server)
             unprocessed_devices[server['globalIdentifier']] = server
         else:
