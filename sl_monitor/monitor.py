@@ -166,10 +166,6 @@ def is_os_install_transaction(transaction):
 
 
 def process_all_devices(device_dict):
-    logger.debug("%s unprocessed hardware, %s unprocessed virtual",
-                len(device_dict['unprocessed_hardware']),
-                len(device_dict['unprocessed_virtual']))
-
     if ApplicationConfig.getboolean("environment", "monitor_hardware"):
         process_devices(device_dict, 'unprocessed_hardware', 'Hardware')
     
