@@ -194,6 +194,7 @@ def process_devices(device_dict, unprocessed_key, device_type):
         except Exception as err:
             logger.error(err, exc_info=True)
             logger.error("Script error occurred, skipping device.")
+            continue
 
         # once complete remove from unprocessed
         logger.info("Removing %s (%s) from unprocessed %s",
